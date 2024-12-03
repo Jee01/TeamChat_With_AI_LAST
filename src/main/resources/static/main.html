@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>채팅방</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+
+        .chat-container {
+            width: 900px;
+            height: 700px;
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-display {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            border-bottom: 2px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .chat-input-area {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+
+        .file-upload-button {
+            width: 40px;
+            height: 40px;
+            border: 2px solid black;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 10px;
+            cursor: pointer;
+            background-color: white;
+        }
+
+        .file-upload-button span {
+            font-size: 24px;
+            font-weight: bold;
+            color: black;
+        }
+
+        .chat-input {
+            flex: 1;
+            height: 40px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            padding: 0 15px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .chat-input:focus {
+            border-color: #007BFF;
+        }
+
+        .submit-button {
+            margin-left: 10px;
+            padding: 0 20px;
+            height: 40px;
+            border: none;
+            border-radius: 20px;
+            background-color: #007BFF;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .submit-button:hover {
+            background-color: #0056b3;
+        }
+
+        .message {
+            max-width: 60%;
+            padding: 10px;
+            border-radius: 10px;
+            word-wrap: break-word;
+            font-size: 16px;
+        }
+
+        .my-message {
+            align-self: flex-end;
+            background-color: #007BFF;
+            color: white;
+        }
+
+        .their-message {
+            align-self: flex-start;
+            background-color: #f0f0f0;
+            color: black;
+        }
+
+        .footer {
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+        }
+
+        .footer input[type="checkbox"] {
+            margin-right: 10px;
+        }
+
+        .footer label {
+            font-size: 16px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-display" id="chat-display">
+            <!-- 채팅 메시지가 여기에 추가됩니다. -->
+        </div>
+        <div class="chat-input-area">
+            <!-- 파일 업로드 버튼 -->
+            <div class="file-upload-button" id="file-upload-button">
+                <span>+</span>
+                <input type="file" id="file-input" style="display: none;" />
+            </div>
+            <!-- 텍스트 입력 -->
+            <input type="text" class="chat-input" id="chat-input" placeholder="메시지를 입력하세요..." />
+            <!-- 전송 버튼 -->
+            <button class="submit-button" id="submit-button">전송</button>
+        </div>
+        <!-- With AI 체크박스 -->
+        <div class="footer">
+            <input type="checkbox" id="with-ai" />
+            <label for="with-ai">With AI</label>
+        </div>
+    </div>
+
+    <script>
+        const fileUploadButton = document.getElementById('file-upload-button');
+        const fileInput = document.getElementById('file-input');
+
+        // 파일 업로드 버튼 클릭 시 파일 선택 창 열기
+        fileUploadButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // 파일 선택 시 이벤트 처리
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                alert(`파일이 선택되었습니다: ${file.name}`);
+            }
+        });
+
+        // 메시지 전송 기능
+        const submitButton = document.getElementById('submit-button');
+        const chatInput = document.getElementById('chat-input');
+        const chatDisplay = document.getElementById('chat-display');
+
+        const addMyMessage = (message) => {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', 'my-message');
+            messageElement.textContent = message;
+            chatDisplay.appendChild(messageElement);
+            chatDisplay.scrollTop = chatDisplay.scrollHeight;
+        };
+
+        const addTheirMessage = (message) => {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', 'their-message');
+            messageElement.textContent = message;
+            chatDisplay.appendChild(messageElement);
+            chatDisplay.scrollTop = chatDisplay.scrollHeight;
+        };
+
+        submitButton.addEventListener('click', () => {
+            const message = chatInput.value.trim();
+            if (message) {
+                addMyMessage(message);
+
+                // 테스트용으로 상대방 메시지를 2초 후에 추가
+                setTimeout(() => {
+                    addTheirMessage('상대방 응답 예시 메시지');
+                }, 2000);
+
+                chatInput.value = '';
+            }
+        });
+    </script>
+</body>
+</html>

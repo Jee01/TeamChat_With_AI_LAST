@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>채팅방 목록</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+
+        .main-container {
+            width: 900px;
+            height: 700px;
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 20px;
+            background-color: #007BFF;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+        }
+
+        .chat-room-list {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .chat-room {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            color: #333;
+        }
+
+        .chat-room:hover {
+            background-color: #007BFF;
+            color: white;
+        }
+
+        .add-room-button {
+            width: 60px;
+            height: 60px;
+            background-color: #007BFF;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .add-room-modal {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .add-room-modal input {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .add-room-modal button {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #007BFF;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .add-room-modal button:hover {
+            background-color: #0056b3;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+    </style>
+</head>
+<body>
+<div class="main-container">
+    <div class="header">
+        Tema Chating With AI
+    </div>
+    <div class="chat-room-list" id="chat-room-list">
+        <!-- 기존에 하드코딩된 방 목록을 제거 -->
+        <!-- 채팅방 목록은 JavaScript에서 동적으로 추가됩니다 -->
+    </div>
+    <div class="add-room-button" id="add-room-button">+</div>
+    </div>
+
+    <div class="modal-overlay" id="modal-overlay"></div>
+    <div class="add-room-modal" id="add-room-modal">
+        <h3>채팅방 추가</h3>
+        <input type="text" id="room-number" placeholder="새 채팅방 이름" />
+        <button id="submit-room">Submit</button>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // 페이지 로드 시 채팅방 목록을 서버에서 가져옴
+            fetch('/api/room')
+                .then(response => response.json())
+                .then(rooms => {
+                    // 가져온 데이터로 UI 업데이트
+                    const chatRoomList = document.getElementById('chat-room-list');
+                    chatRoomList.innerHTML = ''; // 기존 내용을 클리어
+                    rooms.forEach(room => {
+                        const newRoom = document.createElement('a');
+                        newRoom.href = `#`;
+                        newRoom.textContent = room.name;
+                        newRoom.className = 'chat-room';
+                        chatRoomList.appendChild(newRoom);
+                    });
+                })
+                .catch(error => {
+                    console.error('Failed to fetch room list:', error);
+                });
+
+            // 아래는 기존의 채팅방 추가 관련 코드
+            const addRoomButton = document.getElementById('add-room-button');
+            const modalOverlay = document.getElementById('modal-overlay');
+            const addRoomModal = document.getElementById('add-room-modal');
+            const submitRoomButton = document.getElementById('submit-room');
+            const roomNumberInput = document.getElementById('room-number');
+
+            // 모달 열기
+            addRoomButton.addEventListener('click', () => {
+                modalOverlay.style.display = 'block';
+                addRoomModal.style.display = 'block';
+            });
+
+            // 모달 닫기
+            modalOverlay.addEventListener('click', () => {
+                modalOverlay.style.display = 'none';
+                addRoomModal.style.display = 'none';
+            });
+
+            // 채팅방 추가
+            submitRoomButton.addEventListener('click', () => {
+                const roomName = roomNumberInput.value.trim();
+                if (roomName) {
+                    // 서버에 채팅방 생성 요청
+                    fetch('/api/room', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ name: `TEAM ${roomName}` })
+                    })
+                        .then(response => response.json())
+                        .then(room => {
+                            // 새로운 방이 서버에 제대로 생성된 경우 UI 업데이트
+                            const newRoom = document.createElement('a');
+                            newRoom.href = `#`;
+                            newRoom.textContent = room.name;
+                            newRoom.className = 'chat-room';
+                            chatRoomList.appendChild(newRoom);
+
+                            // 모달 닫기 및 초기화
+                            modalOverlay.style.display = 'none';
+                            addRoomModal.style.display = 'none';
+                            roomNumberInput.value = '';
+                        })
+                        .catch(error => {
+                            console.error('Error creating room:', error);
+                        });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
