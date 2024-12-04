@@ -23,6 +23,7 @@ public class RoomController {
         return roomRepository.save(room); //방 생성
     }
 
+
     @PutMapping("/{id}")
     public Room updateRoom(@RequestBody Room room, @PathVariable Long id) {
         Room exisitingRoom = roomRepository.findById(id).orElseThrow(()->new RuntimeException("Room not found"));
