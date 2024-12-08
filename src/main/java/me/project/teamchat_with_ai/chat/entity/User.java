@@ -20,6 +20,16 @@ public class User {
     @Column(name = "ip_address", length = 50, nullable = false, unique = true)
     private String ipAddress;
 
+
+    // 기본 생성자
+    public User() {}
+
+    // 생성자
+    public User(String ipAddress, String nickname) {
+        this.ipAddress = ipAddress;
+        this.nickname = nickname;
+    }
+
     // Getters and Setters
     public Long getUserId() {
         return userId;

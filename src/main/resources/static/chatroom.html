@@ -160,7 +160,7 @@
                     chatRoomList.innerHTML = ''; // 기존 내용을 클리어
                     rooms.forEach(room => {
                         const newRoom = document.createElement('a');
-                        newRoom.href = `main.html?room_id=${room.id}`;
+                        newRoom.href = `main.html?room_id=${room.roomId}`;
                         newRoom.textContent = room.name;
                         newRoom.className = 'chat-room';
                         chatRoomList.appendChild(newRoom);

@@ -52,27 +52,25 @@
             background-color: #f9f9f9;
         }
 
-        .file-upload-button {
-            width: 40px;
-            height: 40px;
-            border: 2px solid black;
-            border-radius: 50%;
+        .nickname-setting {
             display: flex;
-            justify-content: center;
             align-items: center;
-            margin-right: 10px;
-            cursor: pointer;
-            background-color: white;
-        }
-
-        .file-upload-button span {
-            font-size: 24px;
-            font-weight: bold;
-            color: black;
+            padding: 10px;
+            background-color: #f9f9f9;
         }
 
         .chat-input {
             flex: 1;
+            height: 40px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            padding: 0 15px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .nickname-input {
+            width: 150px;
             height: 40px;
             border: 1px solid #ddd;
             border-radius: 20px;
@@ -142,97 +140,130 @@
     <div class="chat-header" id="chat-header">
         채팅방 이름 로딩 중...
     </div>
+    <div class="nickname-setting">
+        <label for="nickname">닉네임 설정: </label>
+        <input class="nickname-input" type="text" id="nickname" placeholder="닉네임을 입력하세요" />
+        <button class="submit-button" id="set-nickname-button">설정</button>
+    </div>
     <div class="chat-display" id="chat-display">
         <!-- 채팅 메시지가 여기에 추가됩니다. -->
     </div>
     <div class="chat-input-area">
-        <!-- 파일 업로드 버튼 -->
-        <div class="file-upload-button" id="file-upload-button">
-            <span>+</span>
-            <input type="file" id="file-input" style="display: none;" />
-        </div>
-        <!-- 텍스트 입력 -->
         <input type="text" class="chat-input" id="chat-input" placeholder="메시지를 입력하세요..." />
-        <!-- 전송 버튼 -->
         <button class="submit-button" id="submit-button">전송</button>
-    </div>
-    <!-- With AI 체크박스 -->
-    <div class="footer">
-        <input type="checkbox" id="with-ai" />
-        <label for="with-ai">With AI</label>
     </div>
 </div>
 
 <script>
-    const fileUploadButton = document.getElementById('file-upload-button');
-    const fileInput = document.getElementById('file-input');
-    const submitButton = document.getElementById('submit-button');
     const chatInput = document.getElementById('chat-input');
     const chatDisplay = document.getElementById('chat-display');
     const chatHeader = document.getElementById('chat-header');
+    const nicknameInput = document.getElementById('nickname');
+    const setNicknameButton = document.getElementById('set-nickname-button');
+    const submitButton = document.getElementById('submit-button');
     const roomId = new URLSearchParams(window.location.search).get('room_id');
+    let userId = null;
+
+    // 사용자 정보 가져오기 및 초기화
+    fetch('/api/user/ip', { method: 'POST' })
+        .then(response => response.json())
+        .then(user => {
+            userId = user.userId;
+            nicknameInput.value = user.nickname || "기본닉네임";
+            console.log('User loaded:', user);
+        })
+        .catch(error => console.error('Failed to initialize user:', error));
+
+    // 닉네임 설정
+    setNicknameButton.addEventListener('click', () => {
+        const newNickname = nicknameInput.value.trim();
+        if (newNickname) {
+            fetch(`/api/user/${userId}/nickname`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newNickname)
+            })
+                .then(response => response.json())
+                .then(user => {
+                    alert(`닉네임이 ${user.nickname}(으)로 변경되었습니다.`);
+                })
+                .catch(error => console.error('Failed to update nickname:', error));
+        }
+    });
 
     // WebSocket 연결 설정
-    const socket = new WebSocket(`ws://localhost:8080/chat?room_id=${roomId}`);
+    const socket = new WebSocket(`ws://220.92.57.103:8080/chat?room_id=${roomId}`);
 
     // 채팅방 이름 가져오기
     fetch(`/api/room/${roomId}`)
         .then(response => response.json())
         .then(room => {
-            chatHeader.textContent = room.name; // 채팅방 이름 표시
+            chatHeader.textContent = room.name;
         })
         .catch(error => {
             chatHeader.textContent = '채팅방 이름을 불러올 수 없습니다.';
             console.error('Failed to fetch room name:', error);
         });
 
-    // WebSocket 연결 성공 시
-    socket.addEventListener('open', () => {
-        console.log('WebSocket 연결이 열렸습니다.');
-    });
+    // 채팅방 기존 메시지 가져오기
+    fetch(`/api/messages?roomId=${roomId}&userId=${userId}`)
+        .then(response => response.json())
+        .then(messages => {
+            messages.forEach(msg => addMessage(msg.content, msg.userName));
+        })
+        .catch(error => {
+            console.error('Failed to fetch messages:', error);
+        });
 
-    // 서버로부터 메시지 수신
+
+    // WebSocket 메시지 수신 처리
     socket.addEventListener('message', (event) => {
-        const message = JSON.parse(event.data);
-        addTheirMessage(message.content);
-    });
+        console.log('Received message:', event.data);
+        try {
+            const data = JSON.parse(event.data);
 
-    // 파일 업로드 버튼 클릭 시 파일 선택 창 열기
-    fileUploadButton.addEventListener('click', () => {
-        fileInput.click();
-    });
-
-    // 파일 선택 시 이벤트 처리
-    fileInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            alert(`파일이 선택되었습니다: ${file.name}`);
+            if (Array.isArray(data)) {
+                // 기존 메시지 처리
+                data.forEach(msg => addMessage(msg.content, msg.userName));
+            } else {
+                // 실시간 메시지 처리
+                addMessage(data.content, data.userName);
+            }
+        } catch (error) {
+            console.error('Error processing received message:', error);
         }
     });
 
     // 메시지 전송
     submitButton.addEventListener('click', () => {
         const message = chatInput.value.trim();
-        if (message) {
-            addMyMessage(message);
-            socket.send(JSON.stringify({ content: message, roomId })); // 서버로 메시지 전송
+        if (message && userId) { // userId가 설정된 경우에만 전송
+            const payload = JSON.stringify({
+                roomId: parseInt(roomId),
+                userId: userId, // 동적으로 가져온 사용자 ID
+                content: message
+            });
+
+            // WebSocket으로 메시지 전송
+            socket.send(payload);
+
             chatInput.value = '';
+        } else if (!userId) {
+            console.error("User ID is not set. Cannot send the message.");
         }
     });
 
-    // 메시지 추가 함수
-    const addMyMessage = (message) => {
-        const messageElement = document.createElement('div');
-        messageElement.classList.add('message', 'my-message');
-        messageElement.textContent = message;
-        chatDisplay.appendChild(messageElement);
-        chatDisplay.scrollTop = chatDisplay.scrollHeight;
-    };
 
-    const addTheirMessage = (message) => {
+    // 메시지 추가 함수
+    const addMessage = (content, sender) => {
         const messageElement = document.createElement('div');
-        messageElement.classList.add('message', 'their-message');
-        messageElement.textContent = message;
+        messageElement.classList.add('message');
+        if (sender === "나") {
+            messageElement.classList.add('my-message');
+        } else {
+            messageElement.classList.add('their-message');
+        }
+        messageElement.innerHTML = `<strong>${sender}:</strong> ${content}`;
         chatDisplay.appendChild(messageElement);
         chatDisplay.scrollTop = chatDisplay.scrollHeight;
     };

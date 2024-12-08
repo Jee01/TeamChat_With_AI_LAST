@@ -29,6 +29,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.1'
     //implementation 'org.thymeleaf.extras:thymeleaf-extras-spring security'
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'com.h2database:h2'

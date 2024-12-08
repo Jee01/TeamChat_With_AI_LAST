@@ -1,27 +1,31 @@
 package me.project.teamchat_with_ai.chat.controller;
 
 import me.project.teamchat_with_ai.chat.entity.Message;
+import me.project.teamchat_with_ai.chat.entity.MessageDTO;
+import me.project.teamchat_with_ai.chat.entity.MessageOutputDTO;
 import me.project.teamchat_with_ai.chat.repository.MessageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/messages")
 public class MessageController {
+
     @Autowired
     private MessageRepository messageRepository;
 
-    // 특정 채팅방(roomId)의 모든 메시지 조회
-    @GetMapping
-    public List<Message> getMessagesByRoom(@RequestParam Long roomId) {
-        return messageRepository.findByRoom_RoomIdOrderByTimeAt(roomId);
+    @GetMapping("/{roomId}")
+    public ResponseEntity<List<MessageDTO>> getMessagesByRoom(@PathVariable Long roomId) {
+        List<Message> messages = messageRepository.findByRoom_RoomIdOrderByTimeAt(roomId);
+        List<MessageDTO> messageDTOs = messages.stream()
+                .map(MessageDTO::new)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(messageDTOs);
     }
 
-    // 메시지 저장
-    @PostMapping
-    public Message saveMessage(@RequestBody Message message) {
-        return messageRepository.save(message);
-    }
 }
+
