@@ -29,6 +29,12 @@ public class User {
         this.ipAddress = ipAddress;
         this.nickname = nickname;
     }
+    //AI 생성자
+    public User(Long userId, String nickname) {
+        this.userId = userId;
+        this.nickname = nickname;
+        this.ipAddress = null; // AI는 IP가 필요 없음
+    }
 
     // Getters and Setters
     public Long getUserId() {

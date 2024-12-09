@@ -190,6 +190,7 @@
             });
 
             // 채팅방 추가
+            // 채팅방 추가
             submitRoomButton.addEventListener('click', () => {
                 const roomName = roomNumberInput.value.trim();
                 if (roomName) {
@@ -201,25 +202,22 @@
                         },
                         body: JSON.stringify({ name: `TEAM ${roomName}` })
                     })
-                        .then(response => response.json())
-                        .then(room => {
-                            // 새로운 방이 서버에 제대로 생성된 경우 UI 업데이트
-                            const newRoom = document.createElement('a');
-                            newRoom.href = `#`;
-                            newRoom.textContent = room.name;
-                            newRoom.className = 'chat-room';
-                            chatRoomList.appendChild(newRoom);
-
-                            // 모달 닫기 및 초기화
-                            modalOverlay.style.display = 'none';
-                            addRoomModal.style.display = 'none';
-                            roomNumberInput.value = '';
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Failed to create room');
+                            }
+                            return response.json();
+                        })
+                        .then(() => {
+                            // 요청이 성공하면 페이지 새로고침
+                            location.reload();
                         })
                         .catch(error => {
                             console.error('Error creating room:', error);
                         });
                 }
             });
+
         });
     </script>
 </body>

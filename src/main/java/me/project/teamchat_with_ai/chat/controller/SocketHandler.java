@@ -103,12 +103,16 @@ public class SocketHandler extends TextWebSocketHandler {
         // Room 및 User 객체 조회
         Room room = roomRepository.findById(inputDTO.getRoomId())
                 .orElseThrow(() -> new RuntimeException("Room not found"));
-        User user = userRepository.findById(inputDTO.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // AI 사용자인 경우 userId를 0으로 설정
+        User user = (inputDTO.getUserId() == 0) ?
+                new User(14L, "AI") :
+                userRepository.findById(inputDTO.getUserId())
+                        .orElseThrow(() -> new RuntimeException("User not found"));
 
         // Message 엔티티 생성
         Message newMessage = new Message();
-        newMessage.setRoom(room);  // Room 설정
+        newMessage.setRoom(room);
         newMessage.setUser(user);
         newMessage.setContent(inputDTO.getContent());
         newMessage.setTimeAt(LocalDateTime.now());
@@ -119,6 +123,7 @@ public class SocketHandler extends TextWebSocketHandler {
         // WebSocket 세션으로 브로드캐스트
         broadcastMessage(roomId, newMessage);
     }
+
 
 
 

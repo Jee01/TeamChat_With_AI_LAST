@@ -107,8 +107,8 @@
             font-size: 16px;
         }
 
-        .my-message {
-            align-self: flex-end;
+        .AI-message {
+            align-self: flex-start;
             background-color: #007BFF;
             color: white;
         }
@@ -151,6 +151,10 @@
     <div class="chat-input-area">
         <input type="text" class="chat-input" id="chat-input" placeholder="메시지를 입력하세요..." />
         <button class="submit-button" id="submit-button">전송</button>
+    </div>
+    <div class="chat-input-area">
+        <label for="use_ai">AI 활용 질문</label>
+        <input type="checkbox" id="use_ai">
     </div>
 </div>
 
@@ -224,32 +228,78 @@
 
             if (Array.isArray(data)) {
                 // 기존 메시지 처리
-                data.forEach(msg => addMessage(msg.content, msg.userName));
+                data.forEach(msg => {
+                    if (msg.userId !== userId) { // 자신의 메시지는 추가하지 않음
+                        addMessage(msg.content, msg.userName);
+                    }
+                });
             } else {
                 // 실시간 메시지 처리
-                addMessage(data.content, data.userName);
+                if (data.userId !== userId) { // 자신의 메시지는 추가하지 않음
+                    addMessage(data.content, data.userName);
+                }
             }
         } catch (error) {
             console.error('Error processing received message:', error);
         }
     });
 
+
     // 메시지 전송
-    submitButton.addEventListener('click', () => {
+    const sendMessage = () => {
         const message = chatInput.value.trim();
+        const useAi = document.getElementById('use_ai').checked; // AI 질문 여부 확인
+
         if (message && userId) { // userId가 설정된 경우에만 전송
-            const payload = JSON.stringify({
-                roomId: parseInt(roomId),
-                userId: userId, // 동적으로 가져온 사용자 ID
-                content: message
-            });
+            if (useAi) {
+                // AI 질문
+                fetch(`/gpt/ask?prompt=${encodeURIComponent(message)}`)
+                    .then(response => response.text())
+                    .then(aiResponse => {
+                        const payload_ai = JSON.stringify({
+                            roomId: parseInt(roomId),
+                            userId: 14, // AI 사용자 ID
+                            content: aiResponse
+                        });
+                        const payload = JSON.stringify({
+                            roomId: parseInt(roomId),
+                            userId: userId, // 동적으로 가져온 사용자 ID
+                            content: message
+                        });
+                        //질문자의 메세지 브로드캐스트
+                        socket.send(payload);
+                        // WebSocket으로 AI 응답 브로드캐스트
+                        socket.send(payload_ai);
 
-            // WebSocket으로 메시지 전송
-            socket.send(payload);
+                    })
+                    .catch(error => console.error("AI 처리 중 오류 발생:", error));
+            } else {
+                // 일반 메시지
+                const payload = JSON.stringify({
+                    roomId: parseInt(roomId),
+                    userId: userId, // 동적으로 가져온 사용자 ID
+                    content: message
+                });
 
+                // WebSocket으로 메시지 전송
+                socket.send(payload);
+            }
+
+            // 입력창 비우기
             chatInput.value = '';
         } else if (!userId) {
-            console.error("User ID is not set. Cannot send the message.");
+            console.error("User ID가 설정되지 않았습니다. 메시지를 전송할 수 없습니다.");
+        }
+    };
+
+    // "전송" 버튼 클릭 이벤트
+    submitButton.addEventListener('click', sendMessage);
+
+    // "엔터" 키 입력 이벤트
+    chatInput.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault(); // 기본 동작 방지 (폼 제출 등)
+            sendMessage();
         }
     });
 
@@ -258,8 +308,8 @@
     const addMessage = (content, sender) => {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message');
-        if (sender === "나") {
-            messageElement.classList.add('my-message');
+        if (sender === "AI") {
+            messageElement.classList.add('AI-message');
         } else {
             messageElement.classList.add('their-message');
         }
