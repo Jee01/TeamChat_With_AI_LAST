@@ -8,22 +8,141 @@
 **담당 역할** 
 
 ## 🧰 사용 기술
-- Spring boot
-- java
+- Spring boot 3.4.0
+- java 21
 - WebSocket
-- OpenAI API
+- OpenAI API (Chat Completions)
+- Spring Data JPA / Hibernate
+- Spring Security
+- MySQL / H2
 - HTML
 - CSS
 - JavaScript
 
 ## 📂 구조
 
-  
+```
+src/main/java/me/project/teamchat_with_ai/
+├── TeamChatWithAiApplication.java   # 스프링 부트 실행 진입점
+└── chat/
+    ├── config/
+    │   ├── GptConfig.java           # OpenAI API 키/모델 설정 값 바인딩
+    │   ├── SecurityConfig.java      # Spring Security 설정
+    │   └── WebSocketConfig.java     # WebSocket 핸들러 등록 ("/chat")
+    ├── controller/
+    │   ├── GptController.java       # GPT 질의 REST API
+    │   ├── MessageController.java   # 채팅 메시지 조회 REST API
+    │   ├── RoomController.java      # 채팅방 생성/조회 REST API
+    │   ├── SocketHandler.java       # WebSocket 메시지 송수신 처리
+    │   └── UserController.java      # IP 기반 유저 조회/생성, 닉네임 변경
+    ├── entity/
+    │   ├── Message.java             # 메시지 엔티티
+    │   ├── MessageDTO.java          # 메시지 조회용 DTO
+    │   ├── MessageInputDTO.java     # 클라이언트 → 서버 메시지 DTO
+    │   ├── MessageOutputDTO.java    # 서버 → 클라이언트 브로드캐스트 DTO
+    │   ├── Room.java                # 채팅방 엔티티
+    │   └── User.java                # 유저 엔티티
+    ├── repository/
+    │   ├── FileRepository.java      # 파일 업로드용 (미구현, 빈 인터페이스)
+    │   ├── MessageRepository.java
+    │   ├── RoomRepository.java
+    │   └── UserRepository.java
+    └── service/
+        └── OpenAiService.java       # OpenAI API 호출 서비스
+
+src/main/resources/
+├── application.properties           # DB / Security 설정
+└── static/
+    ├── main.html                    # 채팅방 목록 페이지
+    └── chatroom.html                # 채팅 화면 (메시지 송수신, AI 질문)
+```
+
 ## 🛠 기능 구현
 
+### 채팅방 (다중 룸)
+- `Room` 엔티티 기반으로 채팅방을 여러 개 생성/조회 가능
+- `RoomController`가 채팅방 생성 및 목록 조회 REST API 제공
+
+### 실시간 메시지 송수신 (WebSocket)
+- `SocketHandler`가 `TextWebSocketHandler`를 구현하여 `/chat?room_id={roomId}` 엔드포인트로 연결
+- 룸 별 세션을 `ConcurrentHashMap<Long, List<WebSocketSession>>`으로 관리
+- 접속 시 해당 방의 기존 대화 기록을 DB에서 불러와 전송
+- 메시지 수신 시 DB에 저장 후 같은 방에 있는 모든 세션에 브로드캐스트
+- 연결 종료 시 세션 목록에서 제거
+
+### 유저 식별 (IP 기반)
+- 로그인 없이 클라이언트 IP(`X-Forwarded-For` 또는 `RemoteAddr`)로 유저를 식별
+- `POST /api/user/ip` 호출 시 IP로 기존 유저 조회, 없으면 신규 생성
+- `PUT /api/user/{userId}/nickname`으로 닉네임 변경 가능 (중복 확인 없음)
+
+### OpenAI API 연동
+- `GptConfig`가 `openai.secret-key`, `openai.model` 프로퍼티를 바인딩
+- `OpenAiService`가 OpenAI Chat Completions API(`https://api.openai.com/v1/chat/completions`)를 호출
+- `GET /gpt/ask?prompt={prompt}`로 질의, 응답 텍스트 반환
+- 채팅 화면에서 "AI 활용 질문" 체크 시 질문/답변이 채팅방에 함께 기록됨 (AI 답변은 고정 userId=14 사용)
+
+### REST API 목록
+
+| Method | Endpoint | 설명 |
+|--------|----------|------|
+| GET | `/api/room` | 채팅방 전체 조회 |
+| GET | `/api/room/{roomId}` | 특정 채팅방 조회 |
+| POST | `/api/room` | 채팅방 생성 |
+| GET | `/api/messages/{roomId}` | 특정 방의 메시지 조회 |
+| GET | `/api/user/{ipAddress}` | IP로 유저 조회 |
+| POST | `/api/user/ip` | 접속 IP로 유저 조회/생성 |
+| PUT | `/api/user/{userId}/nickname` | 닉네임 변경 |
+| GET | `/gpt/ask?prompt={prompt}` | OpenAI GPT 질의 |
+| WS | `/chat?room_id={roomId}` | 실시간 채팅 WebSocket |
+
+### 데이터베이스 (JPA)
+- `User` : user_id(PK), nickname(unique), ip_address(unique)
+- `Room` : room_id(PK), name(unique)
+- `Message` : message_id(PK), room_id(FK), user_id(FK), content, time_at
+- `spring.jpa.hibernate.ddl-auto=update`로 실행 시 테이블 자동 생성/갱신 (MySQL 기준), H2도 런타임 의존성으로 포함되어 있음
 
 ## 🚀 실행 방법
 
+### 사전 준비
+- Java 21
+- MySQL (또는 H2로 대체 가능) + OpenAI API Key
+
+### 1. 저장소 클론 및 빌드
+```bash
+./gradlew clean build
+```
+
+### 2. `src/main/resources/application.properties` 설정
+기본값은 외부 개발용 서버(`220.92.57.103`)를 가리키고 있으므로, 로컬에서 실행하려면 아래처럼 본인 환경에 맞게 수정한다.
+
+```properties
+# MySQL 사용 시
+spring.datasource.url=jdbc:mysql://localhost:3306/teamchat
+spring.datasource.username=root
+spring.datasource.password=your_password
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+
+spring.security.user.name=admin
+spring.security.user.password=admin
+
+# OpenAI API (GptConfig에서 필요, 현재 프로퍼티 파일에 누락되어 있으므로 직접 추가해야 함)
+openai.secret-key=sk-xxxxxxxxxxxxxxxx
+openai.model=gpt-3.5-turbo
+```
+
+### 3. 실행
+```bash
+./gradlew bootRun
+```
+- 기본 포트: `8080` (별도 설정 없음, Spring Boot 기본값)
+- 접속: `http://localhost:8080/main.html`
+
+### ⚠️ 로컬 실행 시 참고 사항
+- `chatroom.html` 내 WebSocket 접속 주소가 `ws://220.92.57.103:8080/chat?room_id=...`로 하드코딩되어 있어, 로컬에서 그대로 실행하면 실제로는 원격 서버에 연결된다. 로컬 테스트를 하려면 `ws://localhost:8080/chat?room_id=...` 혹은 `window.location.host`를 사용하도록 직접 수정해야 한다.
+- AI 답변은 userId=14로 고정되어 있으므로, 해당 유저가 DB에 미리 존재해야 정상적으로 표시된다.
 
 ## 🔧 개선하고 싶은 점
 
